@@ -8,4 +8,3 @@ optionally
 ```shell
 docker save usage_diff_image -o usage_diff_image.tar
 ```
-# fastapi_docker
