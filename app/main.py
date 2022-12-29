@@ -1,13 +1,23 @@
-import io
+import csv
 import json
+
+# import aiofiles
+# from typing import Union
+from deepdiff import DeepDiff
 # import linkml
-import nmdc_schema
-import pkgutil
+# import nmdc_schema
+# import pkgutil
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from linkml_runtime import SchemaView
 from linkml_runtime.dumpers import json_dumper
-from typing import Union
-from deepdiff import DeepDiff
+import requests
+import urllib.parse
+
+from pydantic import BaseModel, Field, AnyUrl
+
+names_ages_file = "nages.tsv"
+names_ages_data = {}
 
 app = FastAPI()
 
@@ -15,13 +25,26 @@ app = FastAPI()
 schema_url = "https://raw.githubusercontent.com/microbiomedata/nmdc-schema/main/src/schema/nmdc.yaml"
 schema_view = SchemaView(schema_url)
 
+# Open the TSV file in read mode
+with open(names_ages_file, 'r') as tsv_file:
+    # Create a DictReader object to read the TSV file
+    reader = csv.DictReader(tsv_file, delimiter='\t')
+
+    # Iterate over the rows in the TSV file
+    for row in reader:
+        # overwrites ages if there are duplicate names
+        names_ages_data[row['Name']] = row['Age']
+
+
+# print(names_ages_data)
+
 
 # todo ? dependency injection
 
 
 @app.get("/")
 def read_root():
-    return {"Greetings": "Earth"}
+    return {"greetings": "NMDC users!"}
 
 
 @app.get("/get_global_slot/{slot_name}")
@@ -46,6 +69,10 @@ def get_slot_class_usage(slot_name: str, class_name: str):
 @app.get("/get_global_usage_diff/{slot_name}/{class_name}")
 # def get_global_usage_diff(global_schema_url: str, slot_name: str, class_name: str, usage_view: str):
 def get_global_usage_diff(slot_name: str, class_name: str):
+    """
+    Provide the name of a slot in the NMDC schema, and the name of a class that uses that slot.
+    A DeepDiff difference between the slot's global definition and it's usage within the class will be returned.
+    """
     # global_view = SchemaView(global_schema_url)
     # usage_view = SchemaView(usage_schema_url)
     # class_obj = schema_view.induced_class(class_name)
@@ -61,3 +88,36 @@ def get_global_usage_diff(slot_name: str, class_name: str):
     global_vs_usage = DeepDiff(global_slot_dict, usage_slot_dict, ignore_order=True)
 
     return global_vs_usage
+
+
+@app.get("/names_ages_tsv")
+async def names_ages_tsv():
+    # would be better to stream the file
+    return FileResponse(names_ages_file, media_type="text/tab-separated-values")
+    # return FileResponse(path=names_ages_file, filename=names_ages_file)
+
+
+@app.get("/static_oreos")
+async def static_oreos():
+    response = requests.get('https://world.openfoodfacts.org/api/v0/product/7622300489434.json')
+    return response.json()
+
+
+@app.get("/get_from_dub_encoded/{double_encoded_url}")
+async def get_from_dub_encoded(double_encoded_url: str):
+    """
+    Try https%253A%252F%252Fworld.openfoodfacts.org%252Fapi%252Fv0%252Fproduct%252F7622300489434.json
+    """
+    original_url = urllib.parse.unquote(urllib.parse.unquote(double_encoded_url))
+    response = requests.get(original_url)
+    return response.json()
+
+
+class InputModel(BaseModel):
+    unencoded_url: AnyUrl = Field(description="An unencoded URL for an external resource", format="url")
+
+
+@app.post("/unencoded-url")
+def unencoded_url(inputs: InputModel):
+    response = requests.get(inputs.unencoded_url)
+    return response.json()
