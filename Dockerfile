@@ -10,6 +10,8 @@ COPY ./requirements.txt /code/requirements.txt
 #
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
+COPY ./nages.tsv /code/nages.tsv
+
 #
 COPY ./app /code/app
 

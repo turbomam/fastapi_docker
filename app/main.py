@@ -1,19 +1,18 @@
 import csv
 import json
+import urllib.parse
 
+import requests
 # import aiofiles
 # from typing import Union
 from deepdiff import DeepDiff
 # import linkml
 # import nmdc_schema
 # import pkgutil
-from fastapi import FastAPI
+from fastapi import FastAPI, Form
 from fastapi.responses import FileResponse
 from linkml_runtime import SchemaView
 from linkml_runtime.dumpers import json_dumper
-import requests
-import urllib.parse
-
 from pydantic import BaseModel, Field, AnyUrl
 
 names_ages_file = "nages.tsv"
@@ -117,7 +116,21 @@ class InputModel(BaseModel):
     unencoded_url: AnyUrl = Field(description="An unencoded URL for an external resource", format="url")
 
 
-@app.post("/unencoded-url")
+@app.post("/unencoded_url")
 def unencoded_url(inputs: InputModel):
     response = requests.get(inputs.unencoded_url)
     return response.json()
+
+
+@app.post("/unencoded_form")
+def unencoded_form(url: str = Form(default="https://world.openfoodfacts.org/api/v0/product/7622300489434.json")):
+    """
+    Try https://world.openfoodfacts.org/api/v0/product/7622300489434.json
+    """
+    response = requests.get(url)
+    return response.json()
+
+
+@app.post("/login/")
+async def login(username: str = Form(...), password: str = Form(...)):
+    return {"username": username, "password": password}

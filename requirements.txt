@@ -7,3 +7,4 @@ deepdiff
 aiofiles
 pytest
 requests
+python_multipart
