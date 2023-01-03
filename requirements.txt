@@ -8,3 +8,7 @@ aiofiles
 pytest
 requests
 python_multipart
+black[d]
+mypy
+stubs
+types-requests

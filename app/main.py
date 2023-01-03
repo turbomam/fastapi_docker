@@ -1,21 +1,30 @@
+"""
+https://github.com/turbomam/fastapi_docker
+"""
+
 import csv
 import json
-import urllib.parse
+
+# import urllib.parse
 
 import requests
+
 # import aiofiles
 # from typing import Union
-from deepdiff import DeepDiff
+from deepdiff import DeepDiff  # type: ignore
+
 # import linkml
 # import nmdc_schema
 # import pkgutil
 from fastapi import FastAPI, Form
 from fastapi.responses import FileResponse
-from linkml_runtime import SchemaView
-from linkml_runtime.dumpers import json_dumper
+
+from linkml_runtime import SchemaView  # type: ignore
+
+from linkml_runtime.dumpers import json_dumper  # type: ignore
 from pydantic import BaseModel, Field, AnyUrl
 
-names_ages_file = "nages.tsv"
+names_ages_file = "names_ages.tsv"
 names_ages_data = {}
 
 app = FastAPI()
@@ -24,21 +33,16 @@ app = FastAPI()
 schema_url = "https://raw.githubusercontent.com/microbiomedata/nmdc-schema/main/src/schema/nmdc.yaml"
 schema_view = SchemaView(schema_url)
 
+# just showing how to return TSV
 # Open the TSV file in read mode
-with open(names_ages_file, 'r') as tsv_file:
+with open(names_ages_file, "r") as tsv_file:
     # Create a DictReader object to read the TSV file
-    reader = csv.DictReader(tsv_file, delimiter='\t')
+    reader = csv.DictReader(tsv_file, delimiter="\t")
 
     # Iterate over the rows in the TSV file
     for row in reader:
         # overwrites ages if there are duplicate names
-        names_ages_data[row['Name']] = row['Age']
-
-
-# print(names_ages_data)
-
-
-# todo ? dependency injection
+        names_ages_data[row["Name"]] = row["Age"]
 
 
 @app.get("/")
@@ -98,7 +102,9 @@ async def names_ages_tsv():
 
 @app.get("/static_oreos")
 async def static_oreos():
-    response = requests.get('https://world.openfoodfacts.org/api/v0/product/7622300489434.json')
+    response = requests.get(
+        "https://world.openfoodfacts.org/api/v0/product/7622300489434.json"
+    )
     return response.json()
 
 
@@ -113,7 +119,9 @@ async def static_oreos():
 
 
 class InputModel(BaseModel):
-    unencoded_url: AnyUrl = Field(description="An unencoded URL for an external resource", format="url")
+    unencoded_url: AnyUrl = Field(
+        description="An unencoded URL for an external resource", format="url"
+    )
 
 
 @app.post("/unencoded_url")
@@ -123,7 +131,11 @@ def unencoded_url(inputs: InputModel):
 
 
 @app.post("/unencoded_form")
-def unencoded_form(url: str = Form(default="https://world.openfoodfacts.org/api/v0/product/7622300489434.json")):
+def unencoded_form(
+    url: str = Form(
+        default="https://world.openfoodfacts.org/api/v0/product/7622300489434.json"
+    ),
+):
     """
     Try https://world.openfoodfacts.org/api/v0/product/7622300489434.json
     """
@@ -135,24 +147,62 @@ def unencoded_form(url: str = Form(default="https://world.openfoodfacts.org/api/
 # async def login(username: str = Form(...), password: str = Form(...)):
 #     return {"username": username, "password": password}
 
+
 @app.get("/get_class_typecode/{class_name}")
 def get_class_typecode(class_name: str):
-    class_obj = schema_view.induced_class(class_name)
-    class_id_struct_patt = class_obj['attributes']['id']['structured_pattern']
+    # Validate input
+    # todo this doesn't actually return a 400 error
+    if not isinstance(class_name, str) or not class_name:
+        return "Null or non-string class_name", 400
+
+    # todo: when entering an undefined class name
+    #  unhelpful 500 error
+    #  AttributeError: 'NoneType' object has no attribute 'name'
+    try:
+        class_obj = schema_view.induced_class(class_name)
+    except KeyError:
+        return (
+            f"The schema couldn't be loaded or it does not include class {class_name}",
+            404,
+        )
+
+    try:
+        class_id_struct_patt = class_obj["attributes"]["id"]["structured_pattern"]
+    except KeyError:
+        return (
+            f"Class {class_name} does not include a ['attributes']['id']['structured_pattern'] path",
+            404,
+        )
+
     struct_patt_json = json_dumper.dumps(class_id_struct_patt)
     # fastapi custom json serializer?
     # generate pydantic classes for tight integration with fastapi
     struct_patt_dict = json.loads(struct_patt_json)
-    struct_patt_syntax = struct_patt_dict['syntax']
 
-    # could probably do this parse in one or a smaller number os steps
-    # should customize 5xx return values
-    local_portion = struct_patt_syntax.split(':')[1]
-    chunks_by_hyphen = local_portion.split('-')
-    typecode_chunk = chunks_by_hyphen[0]
-    # remove first and final characters (curly brackets)
-    bare_typecode = typecode_chunk[1:-1]
+    try:
+        struct_patt_syntax = struct_patt_dict["syntax"]
+    except KeyError:
+        return (
+            f"Class {class_name}'s ['attributes']['id']['structured_pattern'] does not include a ['syntax']",
+            404,
+        )
 
-    all_settings = schema_view.schema.settings
+    try:
+        # could probably do this parse in one or a smaller number os steps
+        local_portion = struct_patt_syntax.split(":")[1]
+        chunks_by_hyphen = local_portion.split("-")
+        typecode_chunk = chunks_by_hyphen[0]
+        # remove first and final characters (curly brackets)
+        bare_typecode = typecode_chunk[1:-1]
+    except Exception:
+        return "Error parsing class ID structured pattern", 500
 
-    return all_settings[bare_typecode]['setting_value']
+    try:
+        all_settings = schema_view.schema.settings
+    except KeyError:
+        return "Schema does not include a settings block", 404
+
+    try:
+        return all_settings[bare_typecode]["setting_value"]
+    except KeyError:
+        return "Typecode not found", 404
