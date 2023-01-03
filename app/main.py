@@ -102,14 +102,14 @@ async def static_oreos():
     return response.json()
 
 
-@app.get("/get_from_dub_encoded/{double_encoded_url}")
-async def get_from_dub_encoded(double_encoded_url: str):
-    """
-    Try https%253A%252F%252Fworld.openfoodfacts.org%252Fapi%252Fv0%252Fproduct%252F7622300489434.json
-    """
-    original_url = urllib.parse.unquote(urllib.parse.unquote(double_encoded_url))
-    response = requests.get(original_url)
-    return response.json()
+# @app.get("/get_from_dub_encoded/{double_encoded_url}")
+# async def get_from_dub_encoded(double_encoded_url: str):
+#     """
+#     Try https%253A%252F%252Fworld.openfoodfacts.org%252Fapi%252Fv0%252Fproduct%252F7622300489434.json
+#     """
+#     original_url = urllib.parse.unquote(urllib.parse.unquote(double_encoded_url))
+#     response = requests.get(original_url)
+#     return response.json()
 
 
 class InputModel(BaseModel):
@@ -131,6 +131,28 @@ def unencoded_form(url: str = Form(default="https://world.openfoodfacts.org/api/
     return response.json()
 
 
-@app.post("/login/")
-async def login(username: str = Form(...), password: str = Form(...)):
-    return {"username": username, "password": password}
+# @app.post("/login/")
+# async def login(username: str = Form(...), password: str = Form(...)):
+#     return {"username": username, "password": password}
+
+@app.get("/get_class_typecode/{class_name}")
+def get_class_typecode(class_name: str):
+    class_obj = schema_view.induced_class(class_name)
+    class_id_struct_patt = class_obj['attributes']['id']['structured_pattern']
+    struct_patt_json = json_dumper.dumps(class_id_struct_patt)
+    # fastapi custom json serializer?
+    # generate pydantic classes for tight integration with fastapi
+    struct_patt_dict = json.loads(struct_patt_json)
+    struct_patt_syntax = struct_patt_dict['syntax']
+
+    # could probably do this parse in one or a smaller number os steps
+    # should customize 5xx return values
+    local_portion = struct_patt_syntax.split(':')[1]
+    chunks_by_hyphen = local_portion.split('-')
+    typecode_chunk = chunks_by_hyphen[0]
+    # remove first and final characters (curly brackets)
+    bare_typecode = typecode_chunk[1:-1]
+
+    all_settings = schema_view.schema.settings
+
+    return all_settings[bare_typecode]['setting_value']
