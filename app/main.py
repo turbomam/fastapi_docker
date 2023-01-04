@@ -206,3 +206,99 @@ def get_class_typecode(class_name: str):
         return all_settings[bare_typecode]["setting_value"]
     except KeyError:
         return "Typecode not found", 404
+
+
+@app.post("/undefined_mixs_assigned_terms/")
+def undefined_mixs_assigned_terms(
+    def_file_url: str = Form(
+        default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_global_partial_slotdefs.tsv"
+    ),
+    assignment_file_url: str = Form(
+        default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_slot_assignments_and_usages.tsv"
+    ),
+):
+    """
+    Return a list of all terms in the def_file that are not assigned in the assignment_file
+    """
+
+    defined_terms = list(
+        set(
+            tsv_url_to_term_list(
+                tsv_url=def_file_url, term_column_name="SAFE Structured comment name"
+            )
+        )
+    )
+    defined_terms.sort()
+
+    assigned_terms = list(
+        set(
+            tsv_url_to_term_list(
+                tsv_url=assignment_file_url, term_column_name="Structured comment name"
+            )
+        )
+    )
+    assigned_terms.sort()
+
+    undefined_terms = list(set(assigned_terms) - set(defined_terms))
+    undefined_terms.sort()
+
+    return undefined_terms
+
+
+@app.post("/unassigned_mixs_defined_terms/")
+def unassigned_mixs_defined_terms(
+    def_file_url: str = Form(
+        default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_global_partial_slotdefs.tsv"
+    ),
+    assignment_file_url: str = Form(
+        default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_slot_assignments_and_usages.tsv"
+    ),
+):
+    """
+    Return a list of all terms in the def_file that are not assigned in the assignment_file
+    """
+
+    defined_terms = list(
+        set(
+            tsv_url_to_term_list(
+                tsv_url=def_file_url, term_column_name="SAFE Structured comment name"
+            )
+        )
+    )
+    defined_terms.sort()
+
+    assigned_terms = list(
+        set(
+            tsv_url_to_term_list(
+                tsv_url=assignment_file_url, term_column_name="Structured comment name"
+            )
+        )
+    )
+    assigned_terms.sort()
+
+    unassigned_terms = list(set(defined_terms) - set(assigned_terms))
+    unassigned_terms.sort()
+
+    return unassigned_terms
+
+
+def tsv_url_to_term_list(tsv_url, term_column_name, discard_first_n=2):
+    # Download the TSV file from the URL
+    response = requests.get(tsv_url)
+
+    # Decode the contents of the response
+    text = response.text
+
+    # Create a DictReader object to parse the TSV file
+    reader = csv.DictReader(text.splitlines(), delimiter="\t")
+
+    term_list = []
+    for row in reader:
+        # Each row is a dictionary that maps the column names to the values
+        term_list.append(row[term_column_name])
+
+    remaining_items = term_list[discard_first_n:]
+
+    remaining_items.sort()
+
+    return remaining_items

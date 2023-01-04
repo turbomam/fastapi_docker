@@ -13,7 +13,6 @@ docker build -t nmdc-utils-image:latest .
 
 ## run
 ```shell
-# build
 docker run --name nmdc-utils-container -p 80:80 nmdc-utils-image:latest
 ```
 
