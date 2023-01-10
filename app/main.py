@@ -213,44 +213,35 @@ def get_class_typecode(class_name: str) -> Union[tuple[str, int], Any]:
         return "Typecode not found", 404
 
 
+# todo the next four methods are really the same,
+#  just with different prompts for TSV file URLs and different hard-coded column names
+
+
 @app.post("/undefined_mixs_assigned_terms/")
 # async
 def undefined_mixs_assigned_terms(
     def_file_url: str = Form(
         default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_global_partial_slotdefs.tsv"
     ),
+    def_file_term_col: str = Form(default="SAFE Structured comment name"),
     assignment_file_url: str = Form(
         default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_slot_assignments_and_usages.tsv"
     ),
+    assignment_file_term_col: str = Form(default="Structured comment name"),
 ) -> List[str]:
     """
     Return a list of all terms in the def_file that are not assigned in the assignment_file
     """
 
-    defined_terms = list(
-        set(
-            tsv_url_to_term_list(
-                tsv_url=def_file_url, term_column_name="SAFE Structured comment name"
-            )
-        )
+    undefined_terms = term_diffs_from_tsvs(
+        tsv_url_1=assignment_file_url,
+        col_name_1=assignment_file_term_col,
+        tsv_url_2=def_file_url,
+        col_name_2=def_file_term_col,
     )
-    defined_terms.sort()
-
-    assigned_terms = list(
-        set(
-            tsv_url_to_term_list(
-                tsv_url=assignment_file_url, term_column_name="Structured comment name"
-            )
-        )
-    )
-    assigned_terms.sort()
-
-    undefined_terms = list(set(assigned_terms) - set(defined_terms))
     undefined_terms.sort()
 
     return undefined_terms
-
-    # return ["a", "b", "c"]
 
 
 @app.post("/unassigned_mixs_defined_terms/")
@@ -259,36 +250,79 @@ def unassigned_mixs_defined_terms(
     def_file_url: str = Form(
         default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_global_partial_slotdefs.tsv"
     ),
+    def_file_term_col: str = Form(default="SAFE Structured comment name"),
     assignment_file_url: str = Form(
         default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_slot_assignments_and_usages.tsv"
     ),
+    assignment_file_term_col: str = Form(default="Structured comment name"),
 ) -> List[str]:
     """
     Return a list of all terms in the def_file that are not assigned in the assignment_file
     """
 
-    defined_terms = list(
-        set(
-            tsv_url_to_term_list(
-                tsv_url=def_file_url, term_column_name="SAFE Structured comment name"
-            )
-        )
+    unassigned_terms = term_diffs_from_tsvs(
+        tsv_url_1=def_file_url,
+        col_name_1=def_file_term_col,
+        tsv_url_2=assignment_file_url,
+        col_name_2=assignment_file_term_col,
     )
-    defined_terms.sort()
-
-    assigned_terms = list(
-        set(
-            tsv_url_to_term_list(
-                tsv_url=assignment_file_url, term_column_name="Structured comment name"
-            )
-        )
-    )
-    assigned_terms.sort()
-
-    unassigned_terms = list(set(defined_terms) - set(assigned_terms))
     unassigned_terms.sort()
 
     return unassigned_terms
+
+
+@app.post("/undefined_mixs_assigned_packages/")
+# async
+def undefined_mixs_assigned_packages(
+    def_file_url: str = Form(
+        default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_classdefs.tsv"
+    ),
+    def_file_term_col: str = Form(default="SAFE checklist"),
+    assignment_file_url: str = Form(
+        default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_slot_assignments_and_usages.tsv"
+    ),
+    assignment_file_term_col: str = Form(default="class"),
+) -> List[str]:
+    """
+    Return a list of all terms in the def_file that are not assigned in the assignment_file. Has this been updated?
+    """
+
+    undefined_packages = term_diffs_from_tsvs(
+        tsv_url_1=assignment_file_url,
+        col_name_1=assignment_file_term_col,
+        tsv_url_2=def_file_url,
+        col_name_2=def_file_term_col,
+    )
+    undefined_packages.sort()
+
+    return undefined_packages
+
+
+@app.post("/unassigned_mixs_defined_packages/")
+# async ?
+def unassigned_mixs_defined_packages(
+    def_file_url: str = Form(
+        default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_classdefs.tsv"
+    ),
+    def_file_term_col: str = Form(default="SAFE checklist"),
+    assignment_file_url: str = Form(
+        default="https://raw.githubusercontent.com/GenomicsStandardsConsortium/mixs/issue-511-tested-schemasheets/schemasheets/tsv_in/MIxS_6_term_updates_slot_assignments_and_usages.tsv"
+    ),
+    assignment_file_term_col: str = Form(default="class"),
+) -> List[str]:
+    """
+    Return a list of all terms in the def_file that are not assigned in the assignment_file. Has this been updated?
+    """
+
+    unassigned_packages = term_diffs_from_tsvs(
+        tsv_url_1=def_file_url,
+        col_name_1=def_file_term_col,
+        tsv_url_2=assignment_file_url,
+        col_name_2=assignment_file_term_col,
+    )
+    unassigned_packages.sort()
+
+    return unassigned_packages
 
 
 # async
@@ -312,11 +346,27 @@ def tsv_url_to_term_list(
 
     remaining_items = term_list[discard_first_n:]
 
-    remaining_items.sort()
-
-    remaining_items = remaining_items
-
     return remaining_items
+
+
+def term_diffs_from_tsvs(
+    tsv_url_1: str, col_name_1: str, tsv_url_2: str, col_name_2: str
+) -> List[str]:
+    terms_1 = unique_vals_from_tsv_by_url_and_colname(
+        tsv_url=tsv_url_1, col_name=col_name_1
+    )
+    terms_2 = unique_vals_from_tsv_by_url_and_colname(
+        tsv_url=tsv_url_2, col_name=col_name_2
+    )
+
+    terms_1_minus_terms_2 = list(set(terms_1) - set(terms_2))
+    return terms_1_minus_terms_2
+
+
+def unique_vals_from_tsv_by_url_and_colname(tsv_url: str, col_name: str):
+    terms = list(set(tsv_url_to_term_list(tsv_url=tsv_url, term_column_name=col_name)))
+
+    return terms
 
 
 @app.post("/compare_slots_in_two_classes/")
@@ -360,3 +410,76 @@ def compare_slots_in_two_classes(
         f"Slots only found in {schema_1_name}'s {class_1_name}": class_1_only,
         f"Slots only found in {schema_2_name}'s {class_2_name}": class_2_only,
     }
+
+
+@app.get("/get_class_typecode_table/")
+# async?
+# what's the return type?
+# tsv file download?
+def get_class_typecode_table():
+    try:
+        all_settings = schema_view.schema.settings
+    except KeyError:
+        return "Schema does not include a settings block", 404
+
+    all_classes = schema_view.all_classes()
+    all_class_names = [v["name"] for k, v in all_classes.items()]
+    all_class_names.sort()
+
+    all_class_attributes = []
+    for class_name in all_class_names:
+        this_class_attributes = {}
+        this_class_induced = schema_view.induced_class(class_name)
+        this_class_attributes["class"] = class_name
+
+        this_class_induced_slots = schema_view.class_induced_slots(class_name)
+        this_class_induced_slots_names = [i["name"] for i in this_class_induced_slots]
+        this_class_induced_slots_names.sort()
+        # this_class_attributes["slots"] = this_class_induced_slots_names
+
+        this_class_attributes["uses_id"] = "false"
+        this_class_attributes["typecode"] = ""
+        class_id_struct_patt = ""
+
+        if "id" in this_class_induced_slots_names:
+            this_class_attributes["uses_id"] = "true"
+            try:
+                class_id_struct_patt = this_class_induced["attributes"]["id"][
+                    "structured_pattern"
+                ]
+            except KeyError:
+                class_id_struct_patt = ""
+
+        if class_id_struct_patt:
+            try:
+
+                local_portion = class_id_struct_patt["syntax"].split(":")[1]
+                chunks_by_hyphen = local_portion.split("-")
+                typecode_chunk = chunks_by_hyphen[0]
+                # remove first and final characters (curly brackets)
+                bare_typecode = typecode_chunk[1:-1]
+
+                try:
+                    this_class_attributes["typecode"] = all_settings[bare_typecode][
+                        "setting_value"
+                    ]
+                except KeyError:
+                    this_class_attributes["typecode"] = ""
+
+            except KeyError:
+                this_class_attributes["typecode"] = ""
+
+        all_class_attributes.append(this_class_attributes)
+
+    # return all_class_attributes
+
+    keys = all_class_attributes[0].keys()
+
+    class_types_file_name = "class_typecodes.tsv"
+
+    with open(class_types_file_name, "w") as output_file:
+        dict_writer = csv.DictWriter(output_file, fieldnames=keys, delimiter="\t")
+        dict_writer.writeheader()
+        dict_writer.writerows(all_class_attributes)
+
+    return FileResponse(class_types_file_name, media_type="text/tab-separated-values")
